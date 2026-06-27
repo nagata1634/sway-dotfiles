@@ -27,7 +27,18 @@ SPAN = WALL_DIR / ".span"
 CURRENT = SPAN / "current"            # 直近に選んだ元画像のパスを記録
 FULL = SPAN / "_full.png"             # bbox をカバーした中間画像
 EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
-ROFI = ["rofi", "-dmenu", "-i", "-p", "壁紙", "-format", "i", "-show-icons"]
+
+# 壁紙ピッカー専用のレイアウト上書き（このメニューだけ大サムネイルのグリッドにする）。
+# config.rasi のアイコンは小さい(1.1em)ため、-theme-str でここだけ拡大する。
+ROFI_GRID = (
+    "window { width: 1160px; }"
+    "listview { columns: 4; lines: 2; spacing: 12px; }"
+    "element { orientation: vertical; padding: 10px; }"
+    "element-icon { size: 240px; }"
+    "element-text { horizontal-align: 0.5; }"
+)
+ROFI = ["rofi", "-dmenu", "-i", "-p", "壁紙", "-format", "i",
+        "-show-icons", "-theme-str", ROFI_GRID]
 
 
 def sh(*args, check=False):
