@@ -148,10 +148,65 @@ section_bright() {
   esac
 }
 
+# ---------- 壁紙 ----------
+section_wallpaper() {
+  case "$(printf '󰸉  壁紙を選ぶ（span / 内蔵は1枚）\n󰑓  現在の壁紙を再適用\n%s' "$BACK" | menu -p "壁紙")" in
+    *選ぶ*)   "$SCRIPTS/wallpaper-picker.py" ;;
+    *再適用*) "$SCRIPTS/wallpaper-picker.py" --reapply; notify "壁紙を再適用" ;;
+    "$BACK")  home ;;
+  esac
+}
+
+# ---------- 境界（横モニタの縦位置 = 2画面の境目の高さ）----------
+# 横モニタ(短い)を縦モニタ(高い)に対しどの高さで合わせるかを調整する。
+# 横モニタ高さ1440 / 縦モニタ高さ2560 → Y の有効範囲は 0〜1120。
+OUTCONF="$HOME/.config/sway/config.d/10-outputs.conf"
+TOGGLE="$SCRIPTS/toggle-monitors.sh"
+
+landscape_output() {  # ライブの横モニタ名（外部・transformが90/270でない）
+  swaymsg -t get_outputs | python3 -c 'import sys,json
+print(next((o["name"] for o in json.load(sys.stdin)
+  if o.get("active") and not o["name"].startswith(("eDP","LVDS","DSI"))
+  and str(o.get("transform")) not in ("90","270")), ""))'
+}
+
+set_boundary() {  # $1=新しいY。静的設定2ファイルを更新→ライブ適用→壁紙再span
+  local y=$1 out
+  (( y < 0 )) && y=0; (( y > 1120 )) && y=1120
+  # 静的設定の `position 0 <Y>`（横モニタ行のみに一致）を書き換え＝再起動でも永続
+  sed -i -E "s/position 0 [0-9]+/position 0 $y/" "$OUTCONF" "$TOGGLE"
+  out=$(landscape_output)
+  [ -n "$out" ] && swaymsg output "$out" position 0 "$y" >/dev/null
+  "$SCRIPTS/wallpaper-picker.py" --reapply   # 新ジオメトリで壁紙を切り直し
+  notify "境界の高さ Y=$y"
+}
+
+section_boundary() {
+  local cur; cur=$(grep -oE 'position 0 [0-9]+' "$OUTCONF" 2>/dev/null | grep -oE '[0-9]+$' | head -1)
+  cur=${cur:-967}
+  local choice
+  choice=$(printf '󰜸  上げる -50\n󰜸  上げる -10\n󰜶  下げる +10\n󰜶  下げる +50\n󰉞  数値を入力\n%s' "$BACK" \
+    | menu -p "境界の高さ  現在 Y=$cur (0〜1120)")
+  [ -z "$choice" ] && return
+  case "$choice" in
+    *上げる\ -50*) set_boundary $((cur-50)); exec "$0" boundary ;;
+    *上げる\ -10*) set_boundary $((cur-10)); exec "$0" boundary ;;
+    *下げる\ +10*) set_boundary $((cur+10)); exec "$0" boundary ;;
+    *下げる\ +50*) set_boundary $((cur+50)); exec "$0" boundary ;;
+    *数値*)
+      local v; v=$(rofi -dmenu -theme "$THEME" -p "Y値 (0〜1120)" -lines 0)
+      [[ "$v" =~ ^[0-9]+$ ]] && { set_boundary "$v"; }
+      exec "$0" boundary ;;
+    "$BACK") exec "$0" display ;;
+  esac
+}
+
 # ---------- ディスプレイ ----------
 section_display() {
-  case "$(printf '󰍹  横/縦の配置を入れ替える\n%s' "$BACK" | menu -p "ディスプレイ")" in
+  case "$(printf '󰍹  横/縦の配置を入れ替える\n󰕞  境界の高さを調整\n󰸉  壁紙を選ぶ\n%s' "$BACK" | menu -p "ディスプレイ")" in
     *入れ替え*) "$SCRIPTS/toggle-monitors.sh"; notify "ディスプレイ配置を入替" ;;
+    *境界*)     exec "$0" boundary ;;
+    *壁紙*)     exec "$0" wallpaper ;;
     "$BACK") home ;;
   esac
 }
@@ -229,7 +284,8 @@ main() {
 
 case "${1:-}" in
   wifi) section_wifi ;;  bt) section_bt ;;       sound) section_sound ;;
-  bright) section_bright ;;  display) section_display ;;  night) section_night ;;
+  bright) section_bright ;;  display) section_display ;;  wallpaper) section_wallpaper ;;
+  boundary) section_boundary ;;  night) section_night ;;
   tuned) section_tuned ;;  dnd) section_dnd ;;   shot) section_shot ;;
   *) main ;;
 esac

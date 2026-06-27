@@ -30,7 +30,9 @@ set $menu $rofi_cmd -show drun -modes drun
 #
 # Default wallpaper (more resolutions are available in /usr/share/backgrounds/sway/)
 # Requires: desktop-backgrounds-compat, swaybg, jxl-pixbuf-loader
-output * bg $HOME/Pictures/background/2229823429-redhair_baobhansith_pc_wallpaper_2560_kabekin-Gpl2-1920x1080-MM-100.jpg fill
+# 既定の壁紙＝壁紙ピッカーが生成する内蔵用画像（eDP-1 はこれを1枚で表示）。
+# 外部モニタ(DP)は config.d/10-outputs.conf で span 用の dp6/dp5.png に上書きされる。
+output * bg $HOME/Pictures/background/.span/edp1.png fill
 #
 # Example configuration:
 #
